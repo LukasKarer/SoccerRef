@@ -1,0 +1,6 @@
+Karten Typ done
+Tor Typ (Eigentor, 11er) done
+Auswechslung wer drinnen, drausn done 
+Spieler erstellen, SPielerstatus(drinnen drausen aendern) (für Settings) done
+NOtes schreiben fuer event done
+events anyeigen und loeschen moeglichkeit done
