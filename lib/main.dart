@@ -1,15 +1,29 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
-import 'package:soccer_ref/screens/home_screen.dart';
+import 'package:soccer_ref/watch/home_screen.dart';
+import 'package:soccer_ref/phone/phone_home_screen.dart';
+import 'package:soccer_ref/services/platform_service.dart';
 import 'package:wear_os_plugin/wear_os_app.dart';
 import 'package:wear_os_plugin/wear_os_clipper.dart';
 
-void main() {
-  runApp(WearOsApp(screenBuilder: (context) => App()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final bool isWear = await PlatformService().isWearOS();
+  if (isWear) {
+    runApp(WearOsApp(screenBuilder: (context) => WearApp()));
+  } else {
+    runApp(PhoneApp());
+  }
 }
 
-class App extends StatelessWidget {
-  App({super.key});
+class _BaseApp extends StatelessWidget {
+  _BaseApp({
+    super.key,
+    required this.childBuilder,
+    this.wrapWearClipper = false,
+  });
+  final WidgetBuilder childBuilder;
+  final bool wrapWearClipper;
   static final _defaultLightColorScheme = ColorScheme.fromSwatch(
     primarySwatch: Colors.green,
   );
@@ -17,45 +31,32 @@ class App extends StatelessWidget {
     primarySwatch: Colors.green,
     brightness: Brightness.dark,
   );
-  late ColorScheme lightScheme;
-  late ColorScheme darkScheme;
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (lightColorScheme, darkColorScheme) {
-        if (lightColorScheme != null && darkColorScheme != null) {
-          final schemes = _generateDynamicColourSchemes(
-            lightColorScheme,
-            darkColorScheme,
-          );
-          lightScheme = schemes.$1;
-          darkScheme = schemes.$2;
-        } else {
-          final schemes = _generateDynamicColourSchemes(
-            _defaultLightColorScheme,
-            _defaultDarkColorScheme,
-          );
-          lightScheme = schemes.$1;
-          darkScheme = schemes.$2;
-        }
+        final (
+          computedLight,
+          computedDark,
+        ) = (lightColorScheme != null && darkColorScheme != null)
+            ? _generateDynamicColourSchemes(lightColorScheme, darkColorScheme)
+            : _generateDynamicColourSchemes(
+                _defaultLightColorScheme,
+                _defaultDarkColorScheme,
+              );
+
         return MaterialApp(
           title: 'Soccer Referee',
-          theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
-          darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
+          theme: ThemeData(colorScheme: computedLight, useMaterial3: true),
+          darkTheme: ThemeData(colorScheme: computedDark, useMaterial3: true),
           themeMode: ThemeMode.system,
-          builder: (context, child) =>
-              WearOsClipper(child: child ?? const SizedBox.shrink()),
-          initialRoute: '/',
-          routes: {
-            '/': (context) => const HomeScreen(),
-            /* '/login': (context) => const LoginScreen(),
-            '/new_recipe': (context) => const NewRecipePage(),
-            '/view_recipe': (context) => _buildViewRecipe(context),
-            '/edit_recipe': (context) => _buildEditRecipe(context),
-            '/cook_recipe': (context) => _buildCookRecipe(context), */
-          },
+          builder: wrapWearClipper
+              ? (context, child) =>
+                    WearOsClipper(child: child ?? const SizedBox.shrink())
+              : null,
+          home: Builder(builder: childBuilder),
         );
       },
     );
@@ -122,4 +123,20 @@ class App extends StatelessWidget {
     surfaceContainerHigh: additionalColours[6],
     surfaceContainerHighest: additionalColours[7],
   );
+}
+
+class WearApp extends _BaseApp {
+  WearApp({super.key})
+    : super(
+        wrapWearClipper: true,
+        childBuilder: (context) => const HomeScreen(),
+      );
+}
+
+class PhoneApp extends _BaseApp {
+  PhoneApp({super.key})
+    : super(
+        wrapWearClipper: false,
+        childBuilder: (context) => const PhoneHomeScreen(),
+      );
 }

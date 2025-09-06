@@ -181,11 +181,28 @@ class AppwriteService {
     try {
       final session = await getGameSession(sessionId);
       if (session != null) {
-        session.addEvent(event);
-        await updateGameSession(session);
+        // Use withEvent to create a new session with updated scores
+        final updatedSession = session.withEvent(event);
+        await updateGameSession(updatedSession);
       }
     } catch (e) {
       throw Exception('Failed to add event: $e');
+    }
+  }
+
+  // Update persisted scores for a session (useful for existing sessions)
+  Future<void> updateSessionScores(String sessionId) async {
+    try {
+      final session = await getGameSession(sessionId);
+      if (session != null) {
+        final updatedSession = session.copyWith(
+          homeTeamScore: session.homeTeamGoals,
+          awayTeamScore: session.awayTeamGoals,
+        );
+        await updateGameSession(updatedSession);
+      }
+    } catch (e) {
+      throw Exception('Failed to update session scores: $e');
     }
   }
 

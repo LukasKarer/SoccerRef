@@ -21,6 +21,8 @@ class SoccerEvent {
   final int? substitutionInNumber; // For substitution: player entering
   // Distinguish a straight red from a second-yellow red
   final bool isSecondYellow;
+  // Track if this is an own goal (counts for opposing team)
+  final bool isOwnGoal;
 
   SoccerEvent({
     String? id,
@@ -36,6 +38,7 @@ class SoccerEvent {
     this.substitutionOutNumber,
     this.substitutionInNumber,
     this.isSecondYellow = false,
+    this.isOwnGoal = false,
   }) : id = id ?? const Uuid().v4(),
        timestamp = timestamp ?? DateTime.now();
 
@@ -54,6 +57,7 @@ class SoccerEvent {
       'substitutionOutNumber': substitutionOutNumber,
       'substitutionInNumber': substitutionInNumber,
       'isSecondYellow': isSecondYellow,
+      'isOwnGoal': isOwnGoal,
     };
   }
 
@@ -88,6 +92,9 @@ class SoccerEvent {
         isSecondYellow:
             json['isSecondYellow'] == true ||
             (json['isSecondYellow']?.toString().toLowerCase() == 'true'),
+        isOwnGoal:
+            json['isOwnGoal'] == true ||
+            (json['isOwnGoal']?.toString().toLowerCase() == 'true'),
       );
     } catch (e) {
       print('Error parsing SoccerEvent from JSON: $e');

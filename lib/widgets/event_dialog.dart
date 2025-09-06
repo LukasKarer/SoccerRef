@@ -289,6 +289,7 @@ class _EventDialogState extends State<EventDialog> {
         half: widget.currentHalf,
         substitutionOutNumber: _subOutNumber,
         substitutionInNumber: _subInNumber,
+        isOwnGoal: false,
       );
     } else {
       final display = widget.gameSession != null
@@ -304,6 +305,7 @@ class _EventDialogState extends State<EventDialog> {
         actorNumber: widget.gameSession != null && _selectedStaffToken == null
             ? _selectedNumber
             : null,
+        isOwnGoal: false,
       );
     }
 

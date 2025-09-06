@@ -113,14 +113,45 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         );
       case EventType.redCard:
-        return Transform.rotate(
-          angle: math.pi / 2,
-          child: const Icon(
-            Icons.rectangle_rounded,
-            size: 28,
-            color: Colors.red,
-          ),
-        );
+        if (e.isSecondYellow) {
+          // Second yellow card (yellow-red card) - layered effect
+          return Stack(
+            children: [
+              // Yellow card as base
+              Transform.rotate(
+                angle: math.pi / 2,
+                child: const Icon(
+                  Icons.rectangle_rounded,
+                  size: 28,
+                  color: Colors.amber,
+                ),
+              ),
+              // Red card on top, slightly offset
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Transform.rotate(
+                  angle: math.pi / 2,
+                  child: const Icon(
+                    Icons.rectangle_rounded,
+                    size: 28,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          );
+        } else {
+          // Straight red card - single red card
+          return Transform.rotate(
+            angle: math.pi / 2,
+            child: const Icon(
+              Icons.rectangle_rounded,
+              size: 28,
+              color: Colors.red,
+            ),
+          );
+        }
       case EventType.substitution:
         return const HeroIcon(
           HeroIcons.arrowPathRoundedSquare,
@@ -144,7 +175,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final String who = e.playerName.isNotEmpty
         ? e.playerName
         : (e.actorNumber?.toString() ?? '');
-    final String main = '${_typeLabel(e.type)} • $team';
+    final String main = '${_typeLabel(e)} • $team';
     if (e.type == EventType.substitution) return main;
     if (who.isEmpty) return main;
     return '$main • $who';
@@ -179,14 +210,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return "${baseMinCeil.toString()}$extra'";
   }
 
-  String _typeLabel(EventType t) {
-    switch (t) {
+  String _typeLabel(SoccerEvent e) {
+    switch (e.type) {
       case EventType.goal:
-        return 'Goal';
+        return e.isOwnGoal ? 'Own Goal' : 'Goal';
       case EventType.yellowCard:
         return 'Yellow';
       case EventType.redCard:
-        return 'Red';
+        return e.isSecondYellow ? 'Yellow-Red' : 'Red';
       case EventType.substitution:
         return 'Sub';
       case EventType.penalty:
@@ -201,7 +232,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         backgroundColor: const Color(0xFF1A1A1A),
         title: const Text(
           'Delete event?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         content: Text(
           'Remove ${e.displayName} (${_formatMinute(e)})?',

@@ -25,6 +25,9 @@ class GameSession {
   // Persisted sent-off state per team (actor numbers)
   final List<int> sentOffHomeNumbers;
   final List<int> sentOffAwayNumbers;
+  // Explicitly persisted score values (calculated from events)
+  final int homeTeamScore;
+  final int awayTeamScore;
 
   GameSession({
     String? id,
@@ -42,11 +45,12 @@ class GameSession {
     List<String>? awayRoster,
     List<String>? onPitchHomeLabels,
     List<String>? onPitchAwayLabels,
-
     this.homeTeamColorRgb = 0x0000FF,
     this.awayTeamColorRgb = 0xFF0000,
     List<int>? sentOffHomeNumbers,
     List<int>? sentOffAwayNumbers,
+    int? homeTeamScore,
+    int? awayTeamScore,
   }) : id = id ?? const Uuid().v4(),
        startTime = startTime ?? DateTime.now(),
        events = events ?? [],
@@ -55,7 +59,9 @@ class GameSession {
        onPitchHomeLabels = onPitchHomeLabels ?? <String>[],
        onPitchAwayLabels = onPitchAwayLabels ?? <String>[],
        sentOffHomeNumbers = sentOffHomeNumbers ?? <int>[],
-       sentOffAwayNumbers = sentOffAwayNumbers ?? <int>[];
+       sentOffAwayNumbers = sentOffAwayNumbers ?? <int>[],
+       homeTeamScore = homeTeamScore ?? 0,
+       awayTeamScore = awayTeamScore ?? 0;
 
   Map<String, dynamic> toJson() {
     return {
@@ -84,6 +90,8 @@ class GameSession {
       'awayTeamColorRgb': _rgbToHex(awayTeamColorRgb),
       'sentOffHomeNumbers': sentOffHomeNumbers,
       'sentOffAwayNumbers': sentOffAwayNumbers,
+      'homeTeamScore': homeTeamScore,
+      'awayTeamScore': awayTeamScore,
     };
   }
 
@@ -151,6 +159,12 @@ class GameSession {
         awayTeamColorRgb: _parseRgb(json['awayTeamColorRgb']) ?? 0xFF0000,
         sentOffHomeNumbers: _parseIntList(json['sentOffHomeNumbers']),
         sentOffAwayNumbers: _parseIntList(json['sentOffAwayNumbers']),
+        homeTeamScore: json['homeTeamScore'] is int
+            ? json['homeTeamScore']
+            : int.tryParse(json['homeTeamScore']?.toString() ?? '0') ?? 0,
+        awayTeamScore: json['awayTeamScore'] is int
+            ? json['awayTeamScore']
+            : int.tryParse(json['awayTeamScore']?.toString() ?? '0') ?? 0,
       );
     } catch (e) {
       print('Error parsing GameSession from JSON: $e');
@@ -175,11 +189,12 @@ class GameSession {
     List<String>? awayRoster,
     List<String>? onPitchHomeLabels,
     List<String>? onPitchAwayLabels,
-
     int? homeTeamColorRgb,
     int? awayTeamColorRgb,
     List<int>? sentOffHomeNumbers,
     List<int>? sentOffAwayNumbers,
+    int? homeTeamScore,
+    int? awayTeamScore,
   }) {
     return GameSession(
       id: id ?? this.id,
@@ -202,6 +217,8 @@ class GameSession {
       awayTeamColorRgb: awayTeamColorRgb ?? this.awayTeamColorRgb,
       sentOffHomeNumbers: sentOffHomeNumbers ?? this.sentOffHomeNumbers,
       sentOffAwayNumbers: sentOffAwayNumbers ?? this.sentOffAwayNumbers,
+      homeTeamScore: homeTeamScore ?? this.homeTeamScore,
+      awayTeamScore: awayTeamScore ?? this.awayTeamScore,
     );
   }
 
@@ -214,15 +231,47 @@ class GameSession {
 
   GameSession withEvent(SoccerEvent event) {
     final newEvents = List<SoccerEvent>.from(events)..add(event);
-    return copyWith(events: newEvents);
+    // Calculate new scores after adding the event
+    final newHomeScore = newEvents
+        .where(
+          (e) =>
+              e.type == EventType.goal &&
+              ((e.team == Team.home && !e.isOwnGoal) ||
+                  (e.team == Team.away && e.isOwnGoal)),
+        )
+        .length;
+    final newAwayScore = newEvents
+        .where(
+          (e) =>
+              e.type == EventType.goal &&
+              ((e.team == Team.away && !e.isOwnGoal) ||
+                  (e.team == Team.home && e.isOwnGoal)),
+        )
+        .length;
+
+    return copyWith(
+      events: newEvents,
+      homeTeamScore: newHomeScore,
+      awayTeamScore: newAwayScore,
+    );
   }
 
   int get homeTeamGoals => events
-      .where((e) => e.type == EventType.goal && e.team == Team.home)
+      .where(
+        (e) =>
+            e.type == EventType.goal &&
+            ((e.team == Team.home && !e.isOwnGoal) ||
+                (e.team == Team.away && e.isOwnGoal)),
+      )
       .length;
 
   int get awayTeamGoals => events
-      .where((e) => e.type == EventType.goal && e.team == Team.away)
+      .where(
+        (e) =>
+            e.type == EventType.goal &&
+            ((e.team == Team.away && !e.isOwnGoal) ||
+                (e.team == Team.home && e.isOwnGoal)),
+      )
       .length;
 
   int get homeTeamYellowCards => events
@@ -241,7 +290,12 @@ class GameSession {
       .where((e) => e.type == EventType.redCard && e.team == Team.away)
       .length;
 
-  String get score => '$homeTeamGoals - $awayTeamGoals';
+  String get score {
+    // Use calculated goals from events if available, otherwise fall back to persisted scores
+    final homeGoals = events.isNotEmpty ? homeTeamGoals : homeTeamScore;
+    final awayGoals = events.isNotEmpty ? awayTeamGoals : awayTeamScore;
+    return '$homeGoals : $awayGoals';
+  }
 
   // Helpers
   static List<int> _parseIntList(dynamic value) {

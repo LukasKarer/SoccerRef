@@ -33,6 +33,7 @@ dependencies:
   heroicons: ^0.11.0
   flutter:
     sdk: flutter
+  mobile_scanner: ^6.0.2
 
   # Appwrite for backend
   appwrite: 17.0.1
@@ -46,6 +47,7 @@ dependencies:
   timezone: ^0.9.2
   flutter_timezone: ^4.1.1
   wear_os_plugin: ^0.3.0
+  device_info_plus: ^10.1.2
 
   # UUID generation
   uuid: ^4.3.3

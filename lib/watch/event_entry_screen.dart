@@ -17,7 +17,7 @@ const List<String> kYellowCardReasonOptions = <String>[
 
 const List<String> kRedCardReasonOptions = <String>[
   'DOGSO',
-  'Faul',
+  'Foul',
   'Abusive/insulting language',
   'Unsportsmanlike behaviour',
   'Threat',
@@ -25,11 +25,7 @@ const List<String> kRedCardReasonOptions = <String>[
   'Other',
 ];
 
-const List<String> kGoalTypeOptions = <String>[
-  'Normal',
-  'Penalty',
-  'Own goal',
-];
+const List<String> kGoalTypeOptions = <String>['Normal', 'Penalty', 'Own goal'];
 
 // Event Entry Screen for WearOS
 class EventEntryScreen extends StatefulWidget {
@@ -789,10 +785,12 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
       );
     } else {
       String description = '';
+      bool isOwnGoal = false;
       if (_requiresReasonStep()) {
         final String reason = (_selectedReason ?? '').trim();
         final String note = _noteController.text.trim();
         description = note.isEmpty ? reason : '$reason - $note';
+        isOwnGoal = reason == 'Own goal';
       }
       // If adding a yellow card and the person already has one, convert to yellow-red
       if (_selectedEventType == EventType.yellowCard) {
@@ -810,6 +808,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
               extraTime: overtimeSeconds,
               actorNumber: null,
               isSecondYellow: true,
+              isOwnGoal: isOwnGoal,
             );
           } else {
             event = SoccerEvent(
@@ -821,6 +820,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
               half: widget.gameTimer.currentHalf,
               extraTime: overtimeSeconds,
               actorNumber: null,
+              isOwnGoal: isOwnGoal,
             );
           }
         } else if (_selectedNumber != null) {
@@ -837,6 +837,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
               extraTime: overtimeSeconds,
               actorNumber: _selectedNumber,
               isSecondYellow: true,
+              isOwnGoal: isOwnGoal,
             );
           } else {
             event = SoccerEvent(
@@ -848,6 +849,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
               half: widget.gameTimer.currentHalf,
               extraTime: overtimeSeconds,
               actorNumber: _selectedNumber,
+              isOwnGoal: isOwnGoal,
             );
           }
         } else {
@@ -862,6 +864,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
             half: widget.gameTimer.currentHalf,
             extraTime: overtimeSeconds,
             actorNumber: _selectedStaffToken == null ? _selectedNumber : null,
+            isOwnGoal: isOwnGoal,
           );
         }
       } else {
@@ -874,6 +877,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
           half: widget.gameTimer.currentHalf,
           extraTime: overtimeSeconds,
           actorNumber: _selectedStaffToken == null ? _selectedNumber : null,
+          isOwnGoal: isOwnGoal,
         );
       }
     }
