@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import '../services/game_timer.dart';
+import '../widgets/wear_back_button_handler.dart';
 
 class TimeSettingsScreen extends StatefulWidget {
   final GameTimer gameTimer;
@@ -35,60 +36,66 @@ class _TimeSettingsScreenState extends State<TimeSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if (details.primaryVelocity! < 0) {
-            // Swipe up - go back to referee screen
-            Navigator.of(context).pop();
-          }
-        },
-        child: SafeArea(
-          child: WearOsScrollView(
-            controller: _scrollController,
-            /* physics: const ClampingScrollPhysics(),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag, */
-            autoHide: true,
-            child: SingleChildScrollView(
+    return WearBackButtonHandler(
+      onBackPressed: () {
+        // Go back to settings screen
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: GestureDetector(
+          onVerticalDragEnd: (details) {
+            if (details.primaryVelocity! < 0) {
+              // Swipe up - go back to referee screen
+              Navigator.of(context).pop();
+            }
+          },
+          child: SafeArea(
+            child: WearOsScrollView(
               controller: _scrollController,
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Time Settings',
-                            style: TextStyle(
+              /* physics: const ClampingScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag, */
+              autoHide: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          /* IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.arrow_back,
                               color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              size: 24,
                             ),
-                            textAlign: TextAlign.center,
+                          ), */
+                          const Expanded(
+                            child: Text(
+                              'Time Settings',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 48), // Balance the back button
-                      ],
+                          // const SizedBox(width: 48), // Balance the back button
+                        ],
+                      ),
                     ),
-                  ),
 
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Current time display
-                        /* Container(
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Current time display
+                          /* Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.1),
@@ -120,222 +127,228 @@ class _TimeSettingsScreenState extends State<TimeSettingsScreen> {
 
                         const SizedBox(height: 24), */
 
-                        // Time adjustment controls
-                        Container(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildTimeAdjustment(
-                            'Minutes',
-                            _currentMinutes,
-                            (value) => setState(() => _currentMinutes = value),
-                            _currentHalf == 2
-                                ? (widget.gameTimer.firstHalfDuration ~/ 60)
-                                : 0,
-                            _currentHalf == 2
-                                ? ((widget.gameTimer.firstHalfDuration ~/ 60) +
-                                      (widget.gameTimer.secondHalfDuration ~/
-                                          60))
-                                : (widget.gameTimer.firstHalfDuration ~/ 60),
+                          // Time adjustment controls
+                          Container(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildTimeAdjustment(
+                              'Minutes',
+                              _currentMinutes,
+                              (value) =>
+                                  setState(() => _currentMinutes = value),
+                              _currentHalf == 2
+                                  ? (widget.gameTimer.firstHalfDuration ~/ 60)
+                                  : 0,
+                              _currentHalf == 2
+                                  ? ((widget.gameTimer.firstHalfDuration ~/
+                                            60) +
+                                        (widget.gameTimer.secondHalfDuration ~/
+                                            60))
+                                  : (widget.gameTimer.firstHalfDuration ~/ 60),
+                            ),
                           ),
-                        ),
 
-                        const SizedBox(width: 24),
+                          const SizedBox(width: 24),
 
-                        Container(
-                          child: _buildTimeAdjustment(
-                            'Seconds',
-                            _currentSeconds,
-                            (value) => setState(() => _currentSeconds = value),
-                            0,
-                            59,
+                          Container(
+                            child: _buildTimeAdjustment(
+                              'Seconds',
+                              _currentSeconds,
+                              (value) =>
+                                  setState(() => _currentSeconds = value),
+                              0,
+                              59,
+                            ),
                           ),
-                        ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        // Half selection
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              const Text(
-                                'Current Half',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _buildHalfButton(1),
-                                  const SizedBox(width: 8),
-                                  _buildHalfButton(2),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Extra time adjustment
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              const Text(
-                                'Extra Time',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    onPressed: _extraTime > 0
-                                        ? () => setState(() => _extraTime--)
-                                        : null,
-                                    icon: const Icon(
-                                      Icons.remove,
-                                      color: Colors.white,
-                                    ),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.white.withOpacity(
-                                        0.1,
-                                      ),
-                                      shape: const CircleBorder(),
-                                    ),
+                          // Half selection
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Current Half',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                    child: Text(
-                                      '$_extraTime min',
-                                      style: const TextStyle(
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildHalfButton(1),
+                                    const SizedBox(width: 8),
+                                    _buildHalfButton(2),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Extra time adjustment
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Extra Time',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      onPressed: _extraTime > 0
+                                          ? () => setState(() => _extraTime--)
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.remove,
                                         color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.white
+                                            .withOpacity(0.1),
+                                        shape: const CircleBorder(),
                                       ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () =>
-                                        setState(() => _extraTime++),
-                                    icon: const Icon(
-                                      Icons.add,
-                                      color: Colors.white,
-                                    ),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.white.withOpacity(
-                                        0.1,
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 8,
                                       ),
-                                      shape: const CircleBorder(),
+                                      child: Text(
+                                        '$_extraTime min',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    IconButton(
+                                      onPressed: () =>
+                                          setState(() => _extraTime++),
+                                      icon: const Icon(
+                                        Icons.add,
+                                        color: Colors.white,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.white
+                                            .withOpacity(0.1),
+                                        shape: const CircleBorder(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        // Pause/Resume control (not on main screen)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: widget.gameTimer.isReady
-                                ? () {
-                                    if (widget.gameTimer.isPaused) {
-                                      widget.gameTimer.resume();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Timer resumed'),
-                                        ),
-                                      );
-                                    } else if (widget.gameTimer.isRunning) {
-                                      widget.gameTimer.pause();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Timer paused'),
-                                        ),
-                                      );
+                          // Pause/Resume control (not on main screen)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: widget.gameTimer.isReady
+                                  ? () {
+                                      if (widget.gameTimer.isPaused) {
+                                        widget.gameTimer.resume();
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Timer resumed'),
+                                          ),
+                                        );
+                                      } else if (widget.gameTimer.isRunning) {
+                                        widget.gameTimer.pause();
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Timer paused'),
+                                          ),
+                                        );
+                                      }
+                                      setState(() {});
                                     }
-                                    setState(() {});
-                                  }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: widget.gameTimer.isPaused
-                                  ? Colors.green
-                                  : Colors.orange,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.gameTimer.isPaused
+                                    ? Colors.green
+                                    : Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              !widget.gameTimer.isReady
-                                  ? 'GAME NOT STARTED YET'
-                                  : (widget.gameTimer.isPaused
-                                        ? 'RESUME TIMER'
-                                        : 'PAUSE TIMER'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // Apply button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _applyTimeSettings,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'APPLY SETTINGS',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              child: Text(
+                                !widget.gameTimer.isReady
+                                    ? 'GAME NOT STARTED YET'
+                                    : (widget.gameTimer.isPaused
+                                          ? 'RESUME TIMER'
+                                          : 'PAUSE TIMER'),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 36),
+
+                          // Apply button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _applyTimeSettings,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'APPLY SETTINGS',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

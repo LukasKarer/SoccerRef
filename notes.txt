@@ -4,3 +4,6 @@ Auswechslung wer drinnen, drausn done
 Spieler erstellen, SPielerstatus(drinnen drausen aendern) (für Settings) done
 NOtes schreiben fuer event done
 events anyeigen und loeschen moeglichkeit done
+
+bei delte von event spieler nicht wieder sichtbar
+Game restartable Backbutton

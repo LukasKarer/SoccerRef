@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/game_session.dart';
+import '../models/soccer_event.dart';
 import '../services/appwrite_service.dart';
+import 'phone_roster_management_screen.dart';
 
 class PhoneEditSessionScreen extends StatefulWidget {
   final GameSession session;
@@ -20,10 +22,6 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
   late TextEditingController _secondHalfMinutesController;
   late TextEditingController _firstHalfExtraController;
   late TextEditingController _secondHalfExtraController;
-  late TextEditingController _homeRosterController;
-  late TextEditingController _awayRosterController;
-  late TextEditingController _onPitchHomeController;
-  late TextEditingController _onPitchAwayController;
 
   bool _saving = false;
   final AppwriteService _appwrite = AppwriteService();
@@ -52,18 +50,6 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
     _secondHalfExtraController = TextEditingController(
       text: s.secondHalfExtraTime.toString(),
     );
-    _homeRosterController = TextEditingController(
-      text: s.homeRoster.join(', '),
-    );
-    _awayRosterController = TextEditingController(
-      text: s.awayRoster.join(', '),
-    );
-    _onPitchHomeController = TextEditingController(
-      text: s.onPitchHomeLabels.join(', '),
-    );
-    _onPitchAwayController = TextEditingController(
-      text: s.onPitchAwayLabels.join(', '),
-    );
   }
 
   @override
@@ -76,20 +62,21 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
     _secondHalfMinutesController.dispose();
     _firstHalfExtraController.dispose();
     _secondHalfExtraController.dispose();
-    _homeRosterController.dispose();
-    _awayRosterController.dispose();
-    _onPitchHomeController.dispose();
-    _onPitchAwayController.dispose();
     super.dispose();
   }
 
-  List<String> _splitLabels(String input) {
-    return input
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+  Future<void> _navigateToRosterManagement(Team team) async {
+    await Navigator.of(context).push<GameSession>(
+      MaterialPageRoute(
+        builder: (context) =>
+            PhoneRosterManagementScreen(session: widget.session, team: team),
+      ),
+    );
+
+    // Refresh the UI to show updated player counts
+    setState(() {
+      // The session is already updated by reference
+    });
   }
 
   int? _parseRgb(String input) {
@@ -147,15 +134,6 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
         return;
       }
 
-      final List<String> homeRoster = _splitLabels(_homeRosterController.text);
-      final List<String> awayRoster = _splitLabels(_awayRosterController.text);
-      final List<String> onPitchHome = _splitLabels(
-        _onPitchHomeController.text,
-      );
-      final List<String> onPitchAway = _splitLabels(
-        _onPitchAwayController.text,
-      );
-
       final updated = widget.session.copyWith(
         homeTeam: homeTeam.isEmpty ? widget.session.homeTeam : homeTeam,
         awayTeam: awayTeam.isEmpty ? widget.session.awayTeam : awayTeam,
@@ -163,10 +141,6 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
         secondHalfDuration: secondHalf,
         firstHalfExtraTime: firstExtra,
         secondHalfExtraTime: secondExtra,
-        homeRoster: homeRoster,
-        awayRoster: awayRoster,
-        onPitchHomeLabels: onPitchHome,
-        onPitchAwayLabels: onPitchAway,
         homeTeamColorRgb: homeRgb,
         awayTeamColorRgb: awayRgb,
       );
@@ -283,35 +257,25 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Rosters (comma separated labels or numbers)',
+              'Team Rosters',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            TextFormField(
-              controller: _homeRosterController,
-              decoration: const InputDecoration(labelText: 'Home roster'),
-              maxLines: 2,
+            Card(
+              child: ListTile(
+                title: Text('${widget.session.homeTeam} Roster'),
+                subtitle: Text('${widget.session.homeRoster.length} players'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () => _navigateToRosterManagement(Team.home),
+              ),
             ),
-            TextFormField(
-              controller: _awayRosterController,
-              decoration: const InputDecoration(labelText: 'Away roster'),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'On-pitch labels (manual override, comma separated)',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _onPitchHomeController,
-              decoration: const InputDecoration(labelText: 'On-pitch home'),
-              maxLines: 2,
-            ),
-            TextFormField(
-              controller: _onPitchAwayController,
-              decoration: const InputDecoration(labelText: 'On-pitch away'),
-              maxLines: 2,
+            Card(
+              child: ListTile(
+                title: Text('${widget.session.awayTeam} Roster'),
+                subtitle: Text('${widget.session.awayRoster.length} players'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () => _navigateToRosterManagement(Team.away),
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(

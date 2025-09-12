@@ -3,6 +3,8 @@ import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
 import '../services/appwrite_service.dart';
+import '../widgets/wear_back_button_handler.dart';
+import '../widgets/circular_roster_picker.dart';
 
 class RosterManagementScreen extends StatefulWidget {
   final GameSession session;
@@ -17,9 +19,9 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
   late GameSession _session;
   late AppwriteService _appwriteService;
   Team _team = Team.home;
-  final TextEditingController _newLabelController = TextEditingController();
   bool _saving = false;
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _customLabelController = TextEditingController();
 
   @override
   void initState() {
@@ -30,61 +32,146 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
 
   @override
   void dispose() {
-    _newLabelController.dispose();
     _scrollController.dispose();
+    _customLabelController.dispose();
     super.dispose();
   }
 
-  List<String> _labelsForTeam(Team team) => _session.getAllRosterLabels(team);
+  void _handleStateChanged(String label, PlayerState state) {
+    // Get current state to determine what changes are needed
+    final currentState = _getPlayerState(label);
 
-  bool _isOnPitchLabel(Team team, String label) =>
-      _session.isLabelOnPitch(team, label);
-
-  void _toggleLabel(Team team, String label) {
-    final List<String> current = List<String>.from(
-      team == Team.home
-          ? _session.onPitchHomeLabels
-          : _session.onPitchAwayLabels,
-    );
-    if (current.contains(label)) {
-      current.remove(label);
-    } else {
-      current.add(label);
+    switch (state) {
+      case PlayerState.notExistent:
+        // Only remove if currently exists
+        if (currentState != PlayerState.notExistent) {
+          if (_team == Team.home) {
+            _session.homeRoster.remove(label);
+            _session.onPitchHomeLabels.remove(label);
+          } else {
+            _session.awayRoster.remove(label);
+            _session.onPitchAwayLabels.remove(label);
+          }
+        }
+        break;
+      case PlayerState.existentNotOnPitch:
+        // Add to roster if not existent, remove from on-pitch if currently on pitch
+        if (currentState == PlayerState.notExistent) {
+          // Adding new player to roster
+          if (_team == Team.home) {
+            _session.homeRoster.add(label);
+          } else {
+            _session.awayRoster.add(label);
+          }
+        } else if (currentState == PlayerState.existentOnPitch) {
+          // Moving from on-pitch to bench
+          if (_team == Team.home) {
+            _session.onPitchHomeLabels.remove(label);
+          } else {
+            _session.onPitchAwayLabels.remove(label);
+          }
+        }
+        // If already existentNotOnPitch, no change needed
+        break;
+      case PlayerState.existentOnPitch:
+        // Add to roster if not existent, add to on-pitch if not already there
+        if (currentState == PlayerState.notExistent) {
+          // Adding new player to roster and on-pitch
+          if (_team == Team.home) {
+            _session.homeRoster.add(label);
+            _session.onPitchHomeLabels.add(label);
+          } else {
+            _session.awayRoster.add(label);
+            _session.onPitchAwayLabels.add(label);
+          }
+        } else if (currentState == PlayerState.existentNotOnPitch) {
+          // Moving from bench to on-pitch
+          if (_team == Team.home) {
+            _session.onPitchHomeLabels.add(label);
+          } else {
+            _session.onPitchAwayLabels.add(label);
+          }
+        }
+        // If already existentOnPitch, no change needed
+        break;
     }
-    _session.setOnPitchLabels(team, current);
     setState(() {});
+
+    // Save instantly to cloud on watch
+    _save();
   }
 
-  void _addLabel(Team team) {
-    final String label = _newLabelController.text.trim();
-    if (label.isEmpty) return;
-    _session.addRosterLabel(team, label);
-    // If fewer than 11 currently set, auto-add to on-pitch until 11
-    final onPitch = List<String>.from(
-      team == Team.home
-          ? _session.onPitchHomeLabels
-          : _session.onPitchAwayLabels,
-    );
-    if (onPitch.length < 11 && !onPitch.contains(label)) {
-      onPitch.add(label);
-      _session.setOnPitchLabels(team, onPitch);
+  PlayerState _getPlayerState(String label) {
+    final allLabels = _session.getAllRosterLabels(_team);
+    if (!allLabels.contains(label)) {
+      return PlayerState.notExistent;
     }
-    _newLabelController.clear();
+
+    // Check manual on-pitch list directly
+    final manualList = _team == Team.home
+        ? _session.onPitchHomeLabels
+        : _session.onPitchAwayLabels;
+
+    final isOnPitch = manualList.contains(label);
+    return isOnPitch
+        ? PlayerState.existentOnPitch
+        : PlayerState.existentNotOnPitch;
+  }
+
+  void _addCustomLabel(String label) {
+    if (_team == Team.home) {
+      if (!_session.homeRoster.contains(label)) {
+        _session.homeRoster.add(label);
+      }
+    } else {
+      if (!_session.awayRoster.contains(label)) {
+        _session.awayRoster.add(label);
+      }
+    }
     setState(() {});
+
+    // Save instantly to cloud on watch
+    _save();
+  }
+
+  void _handleAddCustomLabel() {
+    final label = _customLabelController.text.trim();
+    if (label.isNotEmpty) {
+      _addCustomLabel(label);
+      _customLabelController.clear();
+    }
   }
 
   Future<void> _save() async {
     if (_saving) return;
+
+    // Check if more than 11 players are on pitch
+    final onPitchCount = _team == Team.home
+        ? _session.onPitchHomeLabels.length
+        : _session.onPitchAwayLabels.length;
+
+    if (onPitchCount > 11) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Warning: $onPitchCount players on pitch (max 11)'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    }
+
     setState(() => _saving = true);
     try {
       if (_session.id.isNotEmpty) {
         await _appwriteService.updateGameSession(_session);
       }
-      if (mounted) {
+      /* if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Roster saved')));
-      }
+      } */
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -119,22 +206,27 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final labels = _labelsForTeam(_team);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: WearOsScrollView(
-        controller: _scrollController,
-        autoHide: true,
-        child: SingleChildScrollView(
+    return WearBackButtonHandler(
+      onBackPressed: () {
+        // No need to save again as each change is saved instantly
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: WearOsScrollView(
           controller: _scrollController,
-          child: SafeArea(
+          autoHide: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
             child: Column(
               children: [
-                Padding(
+                const SizedBox(height: 24),
+                // Header with team selection
+                /* Padding(
                   padding: const EdgeInsets.only(top: 8, bottom: 8),
                   child: Center(
                     child: Text(
-                      'Roster',
+                      'Roster - ${_team == Team.home ? "Home" : "Away"}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -143,7 +235,7 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                ),
+                ), */
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Row(
@@ -155,93 +247,66 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                ListView.separated(
-                  shrinkWrap: true,
-                  primary: false,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: labels.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(color: Colors.white12, height: 1),
-                  itemBuilder: (context, index) {
-                    final label = labels[index];
-                    final bool isOn = _isOnPitchLabel(_team, label);
-                    return ListTile(
-                      title: Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      trailing: ElevatedButton(
-                        onPressed: () => _toggleLabel(_team, label),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isOn ? Colors.green : Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          minimumSize: const Size(0, 0),
-                        ),
-                        child: Text(isOn ? 'On Pitch' : 'Bench'),
-                      ),
-                    );
-                  },
+                // const SizedBox(height: 16),
+
+                // Circular roster picker (without custom add button)
+                CircularRosterPicker(
+                  session: _session,
+                  team: _team,
+                  onStateChanged: _handleStateChanged,
+                  onAddCustomLabel: _addCustomLabel,
+                  isWatch: true,
+                  showCustomAddButton: false, // Hide the custom add button
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
+
+                // Custom add button section
+                /* Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: _newLabelController,
+                          controller: _customLabelController,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Add player/person (e.g., 10 or John)',
+                            hintText: 'Add custom label (e.g., Coach)',
                             hintStyle: TextStyle(
                               color: Colors.white.withOpacity(0.6),
                             ),
                             border: const OutlineInputBorder(),
                           ),
+                          onSubmitted: (value) => _handleAddCustomLabel(),
                         ),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
-                        onPressed: () => _addLabel(_team),
+                        onPressed: _handleAddCustomLabel,
                         child: const Text('Add'),
                       ),
                     ],
                   ),
-                ),
+                ), */
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _saving ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: _customLabelController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Add custom label (e.g., Coach)',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
                       ),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              'Save',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                      border: const OutlineInputBorder(),
                     ),
+                    onSubmitted: (value) => _handleAddCustomLabel(),
                   ),
                 ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _handleAddCustomLabel,
+                  child: const Text('Add'),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),

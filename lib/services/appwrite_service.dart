@@ -101,7 +101,7 @@ class AppwriteService {
         documentId: id,
       );
 
-      print('Retrieved session data: ${response.data}');
+      // print('Retrieved session data: ${response.data}');
       try {
         return GameSession.fromJson(response.data);
       } catch (parseError) {

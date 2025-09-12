@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import 'package:line_icons/line_icons.dart';
-import '../services/appwrite_service.dart';
 import 'game_setup_screen.dart';
+import 'game_history_screen.dart';
+import '../widgets/wear_back_button_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,13 +13,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final AppwriteService _appwriteService = AppwriteService();
   final ScrollController _scrollController = ScrollController();
 
-  void _startNewGame() {
-    Navigator.push(
+  void _startNewGame() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const GameSetupScreen()),
+    );
+  }
+
+  void _viewGameHistory() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const GameHistoryScreen()),
     );
   }
 
@@ -33,80 +40,93 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _viewGameHistory() {
-    // Navigate to game history screen
-    // This could be implemented later
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Game history coming soon!')));
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Soccer Referee'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
-      body: WearOsScrollView(
-        controller: _scrollController,
-        autoHide: true,
-        child: SingleChildScrollView(
+    return WearBackButtonHandler(
+      canPop: false, // Home screen should not be popped
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        /* appBar: AppBar(
+          title: const Text('Soccer Referee'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadGameHistory,
+              tooltip: 'Refresh History',
+            ),
+          ],
+        ), */
+        body: WearOsScrollView(
           controller: _scrollController,
-          physics: const ClampingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Main action buttons
-                SizedBox(
-                  width: double.infinity,
-                  height: 80,
-                  child: ElevatedButton.icon(
-                    onPressed: _startNewGame,
-                    icon: const Icon(LineIcons.plus, size: 32),
-                    label: const Text(
-                      'Start New Game',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+          autoHide: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const ClampingScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 48.0, 16.0, 8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Main action button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton.icon(
+                      onPressed: _startNewGame,
+                      icon: const Icon(LineIcons.plus, size: 24),
+                      label: const Text(
+                        'Start New Game',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                /* const SizedBox(height: 24),
-              
-              SizedBox(
-                width: double.infinity,
-                height: 80,
-                child: ElevatedButton.icon(
-                  onPressed: _viewGameHistory,
-                  icon: const Icon(LineIcons.history, size: 32),
-                  label: const Text(
-                    'Game History',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 10),
+
+                  // Game History button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton.icon(
+                      onPressed: _viewGameHistory,
+                      icon: const Icon(LineIcons.history, size: 24),
+                      label: const Text(
+                        'Game History',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.secondary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onSecondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ), */
-              ],
+                ],
+              ),
             ),
           ),
         ),

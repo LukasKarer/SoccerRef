@@ -6,6 +6,7 @@ import '../models/soccer_event.dart';
 import '../services/appwrite_service.dart';
 import 'dart:math' as math;
 import 'package:heroicons/heroicons.dart';
+import '../widgets/wear_back_button_handler.dart';
 
 class HistoryScreen extends StatefulWidget {
   final GameSession session;
@@ -41,56 +42,70 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Sort by timestamp descending (newest first)
     events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: WearOsScrollView(
-        controller: _scrollController,
-        child: SingleChildScrollView(
+    return WearBackButtonHandler(
+      onBackPressed: () {
+        // Go back to settings screen
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        /* appBar: AppBar(
+          actions: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back),
+            ),
+          ],
+        ), */
+        body: WearOsScrollView(
           controller: _scrollController,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
-                child: Text(
-                  'Event History',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (events.isEmpty) ...[
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 const Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
                   child: Text(
-                    'No events recorded yet',
+                    'Event History',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ] else ...[
-                for (int i = 0; i < events.length; i++) ...[
-                  ListTile(
-                    onLongPress: () => _confirmDelete(events[i]),
-                    leading: _buildLeadingIcon(events[i]),
-                    title: Text(
-                      _titleFor(events[i]),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      _subtitleFor(events[i]),
-                      style: const TextStyle(color: Colors.white70),
+                const SizedBox(height: 8),
+                if (events.isEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'No events recorded yet',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
-                  if (i < events.length - 1)
-                    const Divider(height: 1, color: Colors.white12),
+                ] else ...[
+                  for (int i = 0; i < events.length; i++) ...[
+                    ListTile(
+                      onLongPress: () => _confirmDelete(events[i]),
+                      leading: _buildLeadingIcon(events[i]),
+                      title: Text(
+                        _titleFor(events[i]),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        _subtitleFor(events[i]),
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                    if (i < events.length - 1)
+                      const Divider(height: 1, color: Colors.white12),
+                  ],
                 ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -226,31 +241,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _confirmDelete(SoccerEvent e) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
-          'Delete event?',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        content: Text(
-          'Remove ${e.displayName} (${_formatMinute(e)})?',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+    final bool? confirmed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => _DeleteConfirmationScreen(event: e),
       ),
     );
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       _deleteEvent(e);
     }
   }
@@ -258,7 +254,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _deleteEvent(SoccerEvent e) async {
     final List<SoccerEvent> before = List<SoccerEvent>.from(_session.events);
     setState(() {
-      _session.events.removeWhere((x) => x.id == e.id);
+      _session.removeEvent(e);
     });
     try {
       await _appwriteService.updateGameSession(_session);
@@ -276,8 +272,109 @@ class _HistoryScreenState extends State<HistoryScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to delete: $err')));
       }
-    } finally {
-      // no-op
     }
+  }
+}
+
+class _DeleteConfirmationScreen extends StatelessWidget {
+  final SoccerEvent event;
+
+  const _DeleteConfirmationScreen({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    return WearBackButtonHandler(
+      onBackPressed: () {
+        Navigator.of(context).pop(false);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 36,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Delete Event?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Remove ${event.displayName} (${_formatMinute(event)})?',
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.withOpacity(0.8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'DELETE',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatMinute(SoccerEvent e) {
+    final int baseMinCeil = ((e.gameTime + 59) ~/ 60);
+    final String extra = e.extraTime > 0
+        ? '+${((e.extraTime + 59) ~/ 60)}'
+        : '';
+    return "${baseMinCeil.toString()}$extra'";
   }
 }

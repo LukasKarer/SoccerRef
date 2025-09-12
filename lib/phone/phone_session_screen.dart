@@ -454,6 +454,12 @@ class _PhoneSessionScreenState extends State<PhoneSessionScreen>
   }
 
   String _formatMinute(SoccerEvent e) {
+    if (e.half == 2) {
+      // For second half events, show first half duration + second half elapsed time
+      final int firstHalfDurationSeconds = _session.firstHalfDuration * 60;
+      final int sanitizedGameTime = e.gameTime + firstHalfDurationSeconds;
+      return "${((sanitizedGameTime + 59) ~/ 60)}'";
+    }
     final int baseMinCeil = ((e.gameTime + 59) ~/ 60);
     final String extra = e.extraTime > 0
         ? '+${((e.extraTime + 59) ~/ 60)}'
@@ -533,7 +539,7 @@ class _PhoneSessionScreenState extends State<PhoneSessionScreen>
   Future<void> _deleteEvent(SoccerEvent e) async {
     final List<SoccerEvent> before = List<SoccerEvent>.from(_session.events);
     setState(() {
-      _session.events.removeWhere((x) => x.id == e.id);
+      _session.removeEvent(e);
     });
     try {
       await _appwriteService.updateGameSession(_session);

@@ -81,6 +81,22 @@ class GameTimer {
     _startTimer();
   }
 
+  void restart() {
+    if (_isRunning) return;
+
+    // Preserve existing elapsed time but update timestamps for current time
+    final now = DateTime.now();
+    _lastResumeTime = now;
+
+    // Set accrued seconds to current elapsed time so timer continues from there
+    _accruedSecondsBeforeCurrentRun = _elapsedSeconds;
+
+    _isRunning = true;
+    _isPaused = false;
+
+    _startTimer();
+  }
+
   void pause() {
     if (!_isRunning || _isPaused) return;
 
@@ -367,9 +383,12 @@ class GameTimer {
       _secondHalfExtraTime = extraTime;
     }
 
-    // Calibrate base timestamps; next resume will add from now
-    _startTime = DateTime.now();
-    _lastResumeTime = DateTime.now();
+    // Calculate start time so that the timer shows the desired elapsed time
+    // If user sets 30 minutes, start time should be 30 minutes before now
+    final now = DateTime.now();
+    _startTime = now.subtract(Duration(seconds: seconds));
+    _lastResumeTime =
+        now; // Set to current time so elapsed calculation is correct
 
     // Reset transient state
     _hasEnteredExtraTime = false;

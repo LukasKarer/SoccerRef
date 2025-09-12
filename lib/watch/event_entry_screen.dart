@@ -6,6 +6,7 @@ import '../models/game_session.dart';
 import '../models/soccer_event.dart';
 import '../services/game_timer.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
+import '../widgets/wear_back_button_handler.dart';
 
 // Editable options for reasons/types after number input
 const List<String> kYellowCardReasonOptions = <String>[
@@ -70,31 +71,37 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      /* appBar: AppBar(
+    return WearBackButtonHandler(
+      onBackPressed: () {
+        // Go back to referee screen
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('Add Event'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ), */
-      body: GestureDetector(
-        onVerticalDragEnd: (_selectedTeam != null && _selectedEventType != null)
-            ? null // do not register a vertical-drag recognizer when picker is active
-            : (details) {
-                if (details.primaryVelocity! > 0) {
-                  // Swipe up - go back to referee screen
-                  Navigator.of(context).pop();
-                }
-              },
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Time display
-              /* Container(
+        /* appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          title: const Text('Add Event'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ), */
+        body: GestureDetector(
+          onVerticalDragEnd:
+              (_selectedTeam != null && _selectedEventType != null)
+              ? null // do not register a vertical-drag recognizer when picker is active
+              : (details) {
+                  if (details.primaryVelocity! > 0) {
+                    // Swipe up - go back to referee screen
+                    Navigator.of(context).pop();
+                  }
+                },
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Time display
+                /* Container(
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   '${_formatTime(widget.gameTimer.isReady ? widget.gameTimer.getCurrentHalfTime() : 0)} - Half ${widget.gameTimer.currentHalf}',
@@ -105,8 +112,9 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
                   ),
                 ),
               ), */
-              Expanded(child: _buildEventEntryContent()),
-            ],
+                Expanded(child: _buildEventEntryContent()),
+              ],
+            ),
           ),
         ),
       ),
@@ -348,6 +356,7 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
+          const SizedBox(height: 8),
           Text(
             title,
             style: const TextStyle(
@@ -375,12 +384,14 @@ class _EventEntryScreenState extends State<EventEntryScreen> {
           const SizedBox(height: 8),
           if (eventType == EventType.substitution &&
               _subOutNumber != null &&
-              _subInNumber == null)
+              _subInNumber == null) ...[
             Text(
               'OUT: $_subOutNumber  →  pick IN',
               style: const TextStyle(color: Colors.white70),
             ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
+
           SizedBox(
             child: ElevatedButton(
               onPressed: () {

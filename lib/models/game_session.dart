@@ -12,7 +12,10 @@ class GameSession {
   final int firstHalfExtraTime; // in minutes
   final int secondHalfExtraTime; // in minutes
   final bool isActive;
+  final bool isGameStarted;
   final DateTime? endTime;
+  final DateTime? firstHalfStartTime;
+  final DateTime? secondHalfStartTime;
   // Team rosters as labels (numbers or names)
   final List<String> homeRoster;
   final List<String> awayRoster;
@@ -28,6 +31,10 @@ class GameSession {
   // Explicitly persisted score values (calculated from events)
   final int homeTeamScore;
   final int awayTeamScore;
+  // Device ID to track which watch started the game
+  final String? deviceId;
+  // Timestamp for tracking when the session was last modified
+  final DateTime lastDateChanged;
 
   GameSession({
     String? id,
@@ -40,7 +47,10 @@ class GameSession {
     this.firstHalfExtraTime = 0,
     this.secondHalfExtraTime = 0,
     this.isActive = true,
+    this.isGameStarted = false,
     this.endTime,
+    this.firstHalfStartTime,
+    this.secondHalfStartTime,
     List<String>? homeRoster,
     List<String>? awayRoster,
     List<String>? onPitchHomeLabels,
@@ -51,6 +61,8 @@ class GameSession {
     List<int>? sentOffAwayNumbers,
     int? homeTeamScore,
     int? awayTeamScore,
+    this.deviceId,
+    DateTime? lastDateChanged,
   }) : id = id ?? const Uuid().v4(),
        startTime = startTime ?? DateTime.now(),
        events = events ?? [],
@@ -61,7 +73,8 @@ class GameSession {
        sentOffHomeNumbers = sentOffHomeNumbers ?? <int>[],
        sentOffAwayNumbers = sentOffAwayNumbers ?? <int>[],
        homeTeamScore = homeTeamScore ?? 0,
-       awayTeamScore = awayTeamScore ?? 0;
+       awayTeamScore = awayTeamScore ?? 0,
+       lastDateChanged = lastDateChanged ?? DateTime.now();
 
   Map<String, dynamic> toJson() {
     return {
@@ -78,7 +91,10 @@ class GameSession {
       'firstHalfExtraTime': firstHalfExtraTime,
       'secondHalfExtraTime': secondHalfExtraTime,
       'isActive': isActive,
+      'isGameStarted': isGameStarted,
       'endTime': endTime?.toIso8601String(),
+      'firstHalfStartTime': firstHalfStartTime?.toIso8601String(),
+      'secondHalfStartTime': secondHalfStartTime?.toIso8601String(),
       // Rosters/staff (string-based)
       'homeRoster': homeRoster,
       'awayRoster': awayRoster,
@@ -92,6 +108,8 @@ class GameSession {
       'sentOffAwayNumbers': sentOffAwayNumbers,
       'homeTeamScore': homeTeamScore,
       'awayTeamScore': awayTeamScore,
+      'deviceId': deviceId,
+      'lastDateChanged': lastDateChanged.toIso8601String(),
     };
   }
 
@@ -138,8 +156,17 @@ class GameSession {
             ? json['secondHalfExtraTime']
             : int.tryParse(json['secondHalfExtraTime']?.toString() ?? '0') ?? 0,
         isActive: json['isActive'] is bool ? json['isActive'] : true,
+        isGameStarted: json['isGameStarted'] is bool
+            ? json['isGameStarted']
+            : false,
         endTime: json['endTime'] != null
             ? DateTime.parse(json['endTime'].toString())
+            : null,
+        firstHalfStartTime: json['firstHalfStartTime'] != null
+            ? DateTime.parse(json['firstHalfStartTime'].toString())
+            : null,
+        secondHalfStartTime: json['secondHalfStartTime'] != null
+            ? DateTime.parse(json['secondHalfStartTime'].toString())
             : null,
         // Rosters/staff with null/legacy-safe parsing
         homeRoster: json.containsKey('homeRoster')
@@ -165,6 +192,10 @@ class GameSession {
         awayTeamScore: json['awayTeamScore'] is int
             ? json['awayTeamScore']
             : int.tryParse(json['awayTeamScore']?.toString() ?? '0') ?? 0,
+        deviceId: json['deviceId']?.toString(),
+        lastDateChanged: json['lastDateChanged'] != null
+            ? DateTime.parse(json['lastDateChanged'].toString())
+            : DateTime.now(),
       );
     } catch (e) {
       print('Error parsing GameSession from JSON: $e');
@@ -184,7 +215,10 @@ class GameSession {
     int? firstHalfExtraTime,
     int? secondHalfExtraTime,
     bool? isActive,
+    bool? isGameStarted,
     DateTime? endTime,
+    DateTime? firstHalfStartTime,
+    DateTime? secondHalfStartTime,
     List<String>? homeRoster,
     List<String>? awayRoster,
     List<String>? onPitchHomeLabels,
@@ -195,6 +229,8 @@ class GameSession {
     List<int>? sentOffAwayNumbers,
     int? homeTeamScore,
     int? awayTeamScore,
+    String? deviceId,
+    DateTime? lastDateChanged,
   }) {
     return GameSession(
       id: id ?? this.id,
@@ -207,7 +243,10 @@ class GameSession {
       firstHalfExtraTime: firstHalfExtraTime ?? this.firstHalfExtraTime,
       secondHalfExtraTime: secondHalfExtraTime ?? this.secondHalfExtraTime,
       isActive: isActive ?? this.isActive,
+      isGameStarted: isGameStarted ?? this.isGameStarted,
       endTime: endTime ?? this.endTime,
+      firstHalfStartTime: firstHalfStartTime ?? this.firstHalfStartTime,
+      secondHalfStartTime: secondHalfStartTime ?? this.secondHalfStartTime,
       homeRoster: homeRoster ?? this.homeRoster,
       awayRoster: awayRoster ?? this.awayRoster,
       onPitchHomeLabels: onPitchHomeLabels ?? this.onPitchHomeLabels,
@@ -219,6 +258,8 @@ class GameSession {
       sentOffAwayNumbers: sentOffAwayNumbers ?? this.sentOffAwayNumbers,
       homeTeamScore: homeTeamScore ?? this.homeTeamScore,
       awayTeamScore: awayTeamScore ?? this.awayTeamScore,
+      deviceId: deviceId ?? this.deviceId,
+      lastDateChanged: lastDateChanged ?? this.lastDateChanged,
     );
   }
 
@@ -226,6 +267,81 @@ class GameSession {
     events.add(event);
     if (event.type == EventType.redCard && event.actorNumber != null) {
       _addSentOffInternal(event.team, event.actorNumber!);
+    }
+
+    // Handle substitution and red card events by updating manual on-pitch lists
+    if (event.type == EventType.substitution) {
+      final outNumber = event.substitutionOutNumber?.toString();
+      final inNumber = event.substitutionInNumber?.toString();
+
+      if (event.team == Team.home) {
+        if (outNumber != null && onPitchHomeLabels.contains(outNumber)) {
+          onPitchHomeLabels.remove(outNumber);
+        }
+        if (inNumber != null && !onPitchHomeLabels.contains(inNumber)) {
+          onPitchHomeLabels.add(inNumber);
+        }
+      } else {
+        if (outNumber != null && onPitchAwayLabels.contains(outNumber)) {
+          onPitchAwayLabels.remove(outNumber);
+        }
+        if (inNumber != null && !onPitchAwayLabels.contains(inNumber)) {
+          onPitchAwayLabels.add(inNumber);
+        }
+      }
+    } else if (event.type == EventType.redCard && event.actorNumber != null) {
+      // Remove sent-off player from on-pitch list
+      final playerNumber = event.actorNumber.toString();
+      if (event.team == Team.home) {
+        onPitchHomeLabels.remove(playerNumber);
+      } else {
+        onPitchAwayLabels.remove(playerNumber);
+      }
+    }
+  }
+
+  void removeEvent(SoccerEvent event) {
+    events.removeWhere((x) => x.id == event.id);
+
+    // Handle red card event deletion
+    if (event.type == EventType.redCard && event.actorNumber != null) {
+      _removeSentOffInternal(event.team, event.actorNumber!);
+    }
+
+    // Handle substitution and red card event deletion by updating manual on-pitch lists
+    if (event.type == EventType.substitution) {
+      final outNumber = event.substitutionOutNumber?.toString();
+      final inNumber = event.substitutionInNumber?.toString();
+
+      if (event.team == Team.home) {
+        // Reverse the substitution: remove the incoming player, add back the outgoing player
+        if (inNumber != null && onPitchHomeLabels.contains(inNumber)) {
+          onPitchHomeLabels.remove(inNumber);
+        }
+        if (outNumber != null && !onPitchHomeLabels.contains(outNumber)) {
+          onPitchHomeLabels.add(outNumber);
+        }
+      } else {
+        // Reverse the substitution: remove the incoming player, add back the outgoing player
+        if (inNumber != null && onPitchAwayLabels.contains(inNumber)) {
+          onPitchAwayLabels.remove(inNumber);
+        }
+        if (outNumber != null && !onPitchAwayLabels.contains(outNumber)) {
+          onPitchAwayLabels.add(outNumber);
+        }
+      }
+    } else if (event.type == EventType.redCard && event.actorNumber != null) {
+      // Add back the sent-off player to on-pitch list
+      final playerNumber = event.actorNumber.toString();
+      if (event.team == Team.home) {
+        if (!onPitchHomeLabels.contains(playerNumber)) {
+          onPitchHomeLabels.add(playerNumber);
+        }
+      } else {
+        if (!onPitchAwayLabels.contains(playerNumber)) {
+          onPitchAwayLabels.add(playerNumber);
+        }
+      }
     }
   }
 
@@ -249,10 +365,46 @@ class GameSession {
         )
         .length;
 
+    // Handle substitution and red card events by updating manual on-pitch lists
+    List<String> updatedHomeOnPitch = List<String>.from(onPitchHomeLabels);
+    List<String> updatedAwayOnPitch = List<String>.from(onPitchAwayLabels);
+
+    if (event.type == EventType.substitution) {
+      final outNumber = event.substitutionOutNumber?.toString();
+      final inNumber = event.substitutionInNumber?.toString();
+
+      if (event.team == Team.home) {
+        if (outNumber != null && updatedHomeOnPitch.contains(outNumber)) {
+          updatedHomeOnPitch.remove(outNumber);
+        }
+        if (inNumber != null && !updatedHomeOnPitch.contains(inNumber)) {
+          updatedHomeOnPitch.add(inNumber);
+        }
+      } else {
+        if (outNumber != null && updatedAwayOnPitch.contains(outNumber)) {
+          updatedAwayOnPitch.remove(outNumber);
+        }
+        if (inNumber != null && !updatedAwayOnPitch.contains(inNumber)) {
+          updatedAwayOnPitch.add(inNumber);
+        }
+      }
+    } else if (event.type == EventType.redCard && event.actorNumber != null) {
+      // Remove sent-off player from on-pitch list
+      final playerNumber = event.actorNumber.toString();
+      if (event.team == Team.home) {
+        updatedHomeOnPitch.remove(playerNumber);
+      } else {
+        updatedAwayOnPitch.remove(playerNumber);
+      }
+    }
+
     return copyWith(
       events: newEvents,
       homeTeamScore: newHomeScore,
       awayTeamScore: newAwayScore,
+      onPitchHomeLabels: updatedHomeOnPitch,
+      onPitchAwayLabels: updatedAwayOnPitch,
+      lastDateChanged: DateTime.now(),
     );
   }
 
@@ -537,6 +689,10 @@ class GameSession {
     _addSentOffInternal(team, playerNumber);
   }
 
+  void removeSentOffPlayer(Team team, int playerNumber) {
+    _removeSentOffInternal(team, playerNumber);
+  }
+
   void _addSentOffInternal(Team team, int playerNumber) {
     if (team == Team.home) {
       if (!sentOffHomeNumbers.contains(playerNumber)) {
@@ -546,6 +702,14 @@ class GameSession {
       if (!sentOffAwayNumbers.contains(playerNumber)) {
         sentOffAwayNumbers.add(playerNumber);
       }
+    }
+  }
+
+  void _removeSentOffInternal(Team team, int playerNumber) {
+    if (team == Team.home) {
+      sentOffHomeNumbers.remove(playerNumber);
+    } else {
+      sentOffAwayNumbers.remove(playerNumber);
     }
   }
 

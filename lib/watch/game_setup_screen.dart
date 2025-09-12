@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/game_session.dart';
 import '../services/appwrite_service.dart';
+import '../services/local_storage_service.dart';
 import 'referee_screen.dart';
+import '../widgets/wear_back_button_handler.dart';
 
 class GameSetupScreen extends StatefulWidget {
   const GameSetupScreen({super.key});
@@ -13,6 +15,7 @@ class GameSetupScreen extends StatefulWidget {
 
 class _GameSetupScreenState extends State<GameSetupScreen> {
   final _appwriteService = AppwriteService();
+  final _localStorageService = LocalStorageService();
   bool _isLoading = false;
   GameSession? _gameSession;
   final TextEditingController _homePlayersCtrl = TextEditingController();
@@ -31,12 +34,16 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     });
 
     try {
+      // Get device ID for this watch
+      final deviceId = await _localStorageService.getDeviceId();
+
       // Create a default game session with basic info
       final gameSession = GameSession(
         homeTeam: 'Home Team',
         awayTeam: 'Away Team',
         firstHalfDuration: 45,
         secondHalfDuration: 45,
+        deviceId: deviceId,
       );
 
       // Save to Appwrite
@@ -44,6 +51,9 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       print('Saved session id: $id');
       final savedSession = gameSession.copyWith(id: id);
       print('Saved session: ${savedSession.toJson()}');
+
+      // Also save to local storage
+      await _localStorageService.saveGameSession(savedSession);
 
       setState(() {
         _gameSession = savedSession;
@@ -90,29 +100,34 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     }
 
     if (_gameSession != null) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: GestureDetector(
-          onTap: _switchToGameScreen,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: QrImageView(
-                data: _gameSession!.id,
-                version: QrVersions.auto,
-                size: MediaQuery.of(context).size.shortestSide * 0.6,
-                backgroundColor: Colors.black,
-                eyeStyle: QrEyeStyle(
-                  eyeShape: QrEyeShape.circle,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-                dataModuleStyle: QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.circle,
-                  color: Colors.white.withValues(alpha: 0.9),
+      return WearBackButtonHandler(
+        onBackPressed: () {
+          // Go back to home screen
+          Navigator.of(context).pop();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: GestureDetector(
+            onTap: _switchToGameScreen,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: QrImageView(
+                  data: _gameSession!.id,
+                  version: QrVersions.auto,
+                  size: MediaQuery.of(context).size.shortestSide * 0.6,
+                  backgroundColor: Colors.black,
+                  eyeStyle: QrEyeStyle(
+                    eyeShape: QrEyeShape.circle,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  dataModuleStyle: QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.circle,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
                 ),
               ),
-            ),
-            /* Column(
+              /* Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // QR for pairing
@@ -215,6 +230,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                 ), 
               ],
             ),*/
+            ),
           ),
         ),
       );
