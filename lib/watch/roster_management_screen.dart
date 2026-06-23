@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../widgets/wear_back_button_handler.dart';
 import '../widgets/circular_roster_picker.dart';
 
@@ -17,7 +17,7 @@ class RosterManagementScreen extends StatefulWidget {
 
 class _RosterManagementScreenState extends State<RosterManagementScreen> {
   late GameSession _session;
-  late AppwriteService _appwriteService;
+  late SupabaseService _supabaseService;
   Team _team = Team.home;
   bool _saving = false;
   final ScrollController _scrollController = ScrollController();
@@ -27,7 +27,7 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
   void initState() {
     super.initState();
     _session = widget.session;
-    _appwriteService = AppwriteService();
+    _supabaseService = SupabaseService();
   }
 
   @override
@@ -165,7 +165,7 @@ class _RosterManagementScreenState extends State<RosterManagementScreen> {
     setState(() => _saving = true);
     try {
       if (_session.id.isNotEmpty) {
-        await _appwriteService.updateGameSession(_session);
+        await _supabaseService.updateGameSession(_session);
       }
       /* if (mounted) {
         ScaffoldMessenger.of(

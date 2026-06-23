@@ -1,6 +1,6 @@
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
-import 'appwrite_service.dart';
+import 'supabase_service.dart';
 import 'local_storage_service.dart';
 import 'connectivity_service.dart';
 
@@ -9,7 +9,7 @@ class SyncService {
   factory SyncService() => _instance;
   SyncService._internal();
 
-  final AppwriteService _appwriteService = AppwriteService();
+  final SupabaseService _supabaseService = SupabaseService();
   final LocalStorageService _localStorageService = LocalStorageService();
   final ConnectivityService _connectivityService = ConnectivityService();
 
@@ -27,7 +27,7 @@ class SyncService {
       // Try to sync to remote if online
       if (_connectivityService.isConnected) {
         try {
-          await _appwriteService.updateGameSession(session);
+          await _supabaseService.updateGameSession(session);
           print('Game session synced to remote: ${session.id}');
         } catch (e) {
           print('Failed to sync to remote, saved locally only: $e');
@@ -50,7 +50,7 @@ class SyncService {
       // Try to sync to remote if online
       if (_connectivityService.isConnected) {
         try {
-          final remoteId = await _appwriteService.createGameSession(session);
+          final remoteId = await _supabaseService.createGameSession(session);
           print('Game session created on remote: $remoteId');
           return remoteId;
         } catch (e) {
@@ -80,7 +80,7 @@ class SyncService {
       // If online, try to get from remote and compare
       if (_connectivityService.isConnected) {
         try {
-          final remoteSession = await _appwriteService.getGameSession(id);
+          final remoteSession = await _supabaseService.getGameSession(id);
           if (remoteSession != null) {
             // Compare timestamps and return the most recent
             if (remoteSession.lastDateChanged.isAfter(
@@ -105,7 +105,7 @@ class SyncService {
       // If not found locally and online, try remote
       if (_connectivityService.isConnected) {
         try {
-          final remoteSession = await _appwriteService.getGameSession(id);
+          final remoteSession = await _supabaseService.getGameSession(id);
           if (remoteSession != null) {
             // Save to local storage for future offline access
             await _localStorageService.saveGameSessionWithTimestamp(
@@ -132,7 +132,7 @@ class SyncService {
       // If online, try to get remote sessions and merge
       if (_connectivityService.isConnected) {
         try {
-          final remoteSessions = await _appwriteService.getAllGameSessions();
+          final remoteSessions = await _supabaseService.getAllGameSessions();
           final mergedSessions = await _localStorageService.mergeGameSessions(
             localSessions,
             remoteSessions,
@@ -177,12 +177,12 @@ class SyncService {
       for (final session in localSessions) {
         try {
           // Try to update existing session
-          await _appwriteService.updateGameSession(session);
+          await _supabaseService.updateGameSession(session);
           print('Synced session: ${session.id}');
         } catch (e) {
           // If update fails, try to create new
           try {
-            await _appwriteService.createGameSession(session);
+            await _supabaseService.createGameSession(session);
             print('Created new session: ${session.id}');
           } catch (createError) {
             print('Failed to sync session ${session.id}: $createError');
@@ -209,7 +209,7 @@ class SyncService {
       await syncLocalToRemote();
 
       // Then fetch all remote sessions and merge with local
-      final remoteSessions = await _appwriteService.getAllGameSessions();
+      final remoteSessions = await _supabaseService.getAllGameSessions();
       final localSessions = await _localStorageService.getGameHistory();
 
       // Merge sessions (remote takes precedence for conflicts)
@@ -237,7 +237,7 @@ class SyncService {
       // Try to delete from remote if online
       if (_connectivityService.isConnected) {
         try {
-          await _appwriteService.deleteGameSession(id);
+          await _supabaseService.deleteGameSession(id);
           print('Game session deleted from remote: $id');
         } catch (e) {
           print('Failed to delete from remote: $e');

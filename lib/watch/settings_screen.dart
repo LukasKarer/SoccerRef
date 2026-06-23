@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import '../services/game_timer.dart';
 import '../models/game_session.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../services/sync_service.dart';
 import 'time_settings_screen.dart';
 import 'roster_management_screen.dart';
@@ -21,7 +21,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final ScrollController _scrollController = ScrollController();
-  final AppwriteService _appwriteService = AppwriteService();
+  final SupabaseService _supabaseService = SupabaseService();
   final SyncService _syncService = SyncService();
   bool _isLoadingCloud = false;
   bool _isSyncing = false;
@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isLoadingCloud = true;
     });
     try {
-      final latest = await _appwriteService.getGameSession(
+      final latest = await _supabaseService.getGameSession(
         widget.gameSession!.id,
       );
       if (latest != null && widget.gameTimer != null) {

@@ -5,7 +5,7 @@ import 'dart:math' as math;
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
 import '../services/game_timer.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import 'phone_edit_session_screen.dart';
 
 class PhoneSessionScreen extends StatefulWidget {
@@ -26,7 +26,7 @@ class _PhoneSessionScreenState extends State<PhoneSessionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late GameSession _session;
-  final AppwriteService _appwriteService = AppwriteService();
+  final SupabaseService _supabaseService = SupabaseService();
   bool _isRefreshing = false;
   DateTime _lastUpdated = DateTime.now();
 
@@ -74,7 +74,7 @@ class _PhoneSessionScreenState extends State<PhoneSessionScreen>
     });
 
     try {
-      final updatedSession = await _appwriteService.getGameSession(_session.id);
+      final updatedSession = await _supabaseService.getGameSession(_session.id);
       if (updatedSession != null && mounted) {
         setState(() {
           _session = updatedSession;
@@ -542,7 +542,7 @@ class _PhoneSessionScreenState extends State<PhoneSessionScreen>
       _session.removeEvent(e);
     });
     try {
-      await _appwriteService.updateGameSession(_session);
+      await _supabaseService.updateGameSession(_session);
       if (mounted) {
         ScaffoldMessenger.of(
           context,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:heroicons/heroicons.dart';
 import '../models/game_session.dart';
 import '../services/game_timer.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/qr_code_dialog.dart';
@@ -22,7 +22,7 @@ class RefereeScreen extends StatefulWidget {
 class _RefereeScreenState extends State<RefereeScreen> {
   late GameSession _gameSession;
   late GameTimer _gameTimer;
-  late AppwriteService _appwriteService;
+  late SupabaseService _supabaseService;
   late LocalStorageService _localStorageService;
   late NotificationService _notificationService;
 
@@ -35,7 +35,7 @@ class _RefereeScreenState extends State<RefereeScreen> {
   @override
   void initState() {
     super.initState();
-    _appwriteService = AppwriteService();
+    _supabaseService = SupabaseService();
     _localStorageService = LocalStorageService();
     _notificationService = NotificationService();
     _notificationService.initialize();
@@ -196,7 +196,7 @@ class _RefereeScreenState extends State<RefereeScreen> {
     );
 
     try {
-      await _appwriteService.updateGameSession(_gameSession);
+      await _supabaseService.updateGameSession(_gameSession);
       // Also save to local storage
       await _localStorageService.saveGameSession(_gameSession);
 
@@ -222,7 +222,7 @@ class _RefereeScreenState extends State<RefereeScreen> {
     try {
       // Load latest game settings from cloud before starting
       if (_gameSession.id.isNotEmpty) {
-        final latestGameSession = await _appwriteService.getGameSession(
+        final latestGameSession = await _supabaseService.getGameSession(
           _gameSession.id,
         );
         if (latestGameSession != null) {
@@ -324,11 +324,11 @@ class _RefereeScreenState extends State<RefereeScreen> {
   Future<void> _saveGameSession() async {
     try {
       if (_gameSession.id.isNotEmpty) {
-        await _appwriteService.updateGameSession(_gameSession);
+        await _supabaseService.updateGameSession(_gameSession);
         // Also save to local storage
         await _localStorageService.saveGameSession(_gameSession);
       } else {
-        final id = await _appwriteService.createGameSession(_gameSession);
+        final id = await _supabaseService.createGameSession(_gameSession);
         _gameSession = _gameSession.copyWith(id: id);
         // Also save to local storage
         await _localStorageService.saveGameSession(_gameSession);

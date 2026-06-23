@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../models/game_session.dart';
 import 'phone_session_screen.dart';
 
@@ -13,7 +13,7 @@ class PhoneScanScreen extends StatefulWidget {
 
 class _PhoneScanScreenState extends State<PhoneScanScreen> {
   final MobileScannerController _controller = MobileScannerController();
-  final AppwriteService _appwrite = AppwriteService();
+  final SupabaseService _supabase = SupabaseService();
   bool _handled = false;
   String? _error;
 
@@ -25,7 +25,7 @@ class _PhoneScanScreenState extends State<PhoneScanScreen> {
     if (value == null || value.trim().isEmpty) return;
     setState(() => _handled = true);
     try {
-      final GameSession? session = await _appwrite.getGameSession(value.trim());
+      final GameSession? session = await _supabase.getGameSession(value.trim());
       if (!mounted) return;
       if (session == null) {
         setState(() {

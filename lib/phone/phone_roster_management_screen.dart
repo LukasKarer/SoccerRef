@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../widgets/circular_roster_picker.dart';
 
 class PhoneRosterManagementScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class PhoneRosterManagementScreen extends StatefulWidget {
 class _PhoneRosterManagementScreenState
     extends State<PhoneRosterManagementScreen> {
   late GameSession _session;
-  late AppwriteService _appwriteService;
+  late SupabaseService _supabaseService;
   bool _saving = false;
   final ScrollController _scrollController = ScrollController();
 
@@ -30,7 +30,7 @@ class _PhoneRosterManagementScreenState
   void initState() {
     super.initState();
     _session = widget.session;
-    _appwriteService = AppwriteService();
+    _supabaseService = SupabaseService();
   }
 
   @override
@@ -166,7 +166,7 @@ class _PhoneRosterManagementScreenState
     setState(() => _saving = true);
     try {
       if (_session.id.isNotEmpty) {
-        await _appwriteService.updateGameSession(_session);
+        await _supabaseService.updateGameSession(_session);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

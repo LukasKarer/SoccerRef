@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:soccer_ref/watch/home_screen.dart';
 import 'package:soccer_ref/phone/phone_home_screen.dart';
 import 'package:soccer_ref/services/platform_service.dart';
+import 'package:soccer_ref/services/supabase_service.dart';
 import 'package:soccer_ref/services/sync_service.dart';
 import 'package:wear_os_plugin/wear_os_app.dart';
 import 'package:wear_os_plugin/wear_os_clipper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SupabaseService.initialize();
 
   // Initialize sync service for offline/online functionality
   await SyncService().initialize();

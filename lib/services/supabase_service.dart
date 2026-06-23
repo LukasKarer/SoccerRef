@@ -1,40 +1,48 @@
-import 'package:appwrite/appwrite.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../config/supabase_config.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
 
-class AppwriteService {
-  static const String endpoint = 'https://appwrite.karer.tech/v1';
-  static const String projectId = '68b4eab20008b3666a69';
-  static const String databaseId = '68b4f1550014d6cc1ff2';
-  static const String collectionId = '68b4f15b00093806878f';
+class SupabaseService {
+  static bool _initialized = false;
 
-  late Client client;
-  late Databases databases;
+  static Future<void> initialize() async {
+    if (_initialized || !SupabaseConfig.isConfigured) return;
 
-  AppwriteService() {
-    client = Client();
-    client.setEndpoint(endpoint);
-    client.setProject(projectId);
-    databases = Databases(client);
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+    _initialized = true;
   }
 
-  // Create a new game session
+  SupabaseClient get _client {
+    if (!_initialized) {
+      throw Exception(
+        'Supabase is not configured. Set SupabaseConfig.url and SupabaseConfig.anonKey.',
+      );
+    }
+    return Supabase.instance.client;
+  }
+
+  // Create a new game session.
   Future<String> createGameSession(GameSession session) async {
     try {
       final sessionData = session.toJson();
       print('Creating game session: $sessionData');
 
-      // Validate session data before sending
       _validateSessionData(sessionData);
 
-      final response = await databases.createDocument(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        documentId: session.id,
-        data: sessionData,
-      );
-      print('Game session created successfully with ID: ${response.$id}');
-      return response.$id;
+      final response = await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .insert(sessionData)
+          .select('id')
+          .single();
+
+      final id = response['id']?.toString() ?? session.id;
+      print('Game session created successfully with ID: $id');
+      return id;
     } catch (e) {
       print('Error in createGameSession: $e');
       print('Session data: ${session.toJson()}');
@@ -42,7 +50,7 @@ class AppwriteService {
     }
   }
 
-  // Validate session data to ensure no null values in required fields
+  // Validate session data to ensure no null values in required fields.
   void _validateSessionData(Map<String, dynamic> data) {
     final requiredFields = [
       'id',
@@ -62,7 +70,6 @@ class AppwriteService {
       }
     }
 
-    // Validate integer fields
     final intFields = [
       'firstHalfDuration',
       'secondHalfDuration',
@@ -78,45 +85,41 @@ class AppwriteService {
     }
   }
 
-  // Update an existing game session
+  // Update an existing game session.
   Future<void> updateGameSession(GameSession session) async {
     try {
-      await databases.updateDocument(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        documentId: session.id,
-        data: session.toJson(),
-      );
+      await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .upsert(session.toJson(), onConflict: 'id');
     } catch (e) {
       throw Exception('Failed to update game session: $e');
     }
   }
 
-  // Get a game session by ID
+  // Get a game session by ID.
   Future<GameSession?> getGameSession(String id) async {
     try {
-      final response = await databases.getDocument(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        documentId: id,
-      );
+      final response = await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .select()
+          .eq('id', id)
+          .maybeSingle();
 
-      // print('Retrieved session data: ${response.data}');
+      if (response == null) return null;
+
       try {
-        return GameSession.fromJson(response.data);
+        return GameSession.fromJson(response);
       } catch (parseError) {
         print('Error parsing game session: $parseError');
-        // Try to create a basic session with available data
-        return _createFallbackSession(response.data, id);
+        return _createFallbackSession(response, id);
       }
     } catch (e) {
       print('Error getting game session: $e');
-      // Document not found or other error
       return null;
     }
   }
 
-  // Create a fallback session when parsing fails
+  // Create a fallback session when parsing fails.
   GameSession _createFallbackSession(Map<String, dynamic> data, String id) {
     try {
       return GameSession(
@@ -126,7 +129,7 @@ class AppwriteService {
         startTime: data['startTime'] != null
             ? DateTime.tryParse(data['startTime'].toString()) ?? DateTime.now()
             : DateTime.now(),
-        events: [], // Start with empty events to avoid parsing issues
+        events: [],
         firstHalfDuration: 45,
         secondHalfDuration: 45,
         firstHalfExtraTime: 0,
@@ -135,27 +138,26 @@ class AppwriteService {
       );
     } catch (e) {
       print('Error creating fallback session: $e');
-      // Return a completely default session
       return GameSession(id: id, homeTeam: 'Home Team', awayTeam: 'Away Team');
     }
   }
 
-  // Get all game sessions
+  // Get all game sessions.
   Future<List<GameSession>> getAllGameSessions() async {
     try {
-      final response = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: collectionId,
-      );
+      final response = await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .select()
+          .order('startTime', ascending: false);
 
-      return response.documents.map((doc) {
+      return response.map((doc) {
         try {
-          return GameSession.fromJson(doc.data);
+          return GameSession.fromJson(doc);
         } catch (e) {
-          print('Error parsing document ${doc.$id}: $e');
-          print('Document data: ${doc.data}');
-          // Try to create a fallback session instead of rethrowing
-          return _createFallbackSession(doc.data, doc.$id);
+          final id = doc['id']?.toString() ?? '';
+          print('Error parsing document $id: $e');
+          print('Document data: $doc');
+          return _createFallbackSession(doc, id);
         }
       }).toList();
     } catch (e) {
@@ -163,25 +165,23 @@ class AppwriteService {
     }
   }
 
-  // Delete a game session
+  // Delete a game session.
   Future<void> deleteGameSession(String id) async {
     try {
-      await databases.deleteDocument(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        documentId: id,
-      );
+      await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .delete()
+          .eq('id', id);
     } catch (e) {
       throw Exception('Failed to delete game session: $e');
     }
   }
 
-  // Add an event to a game session
+  // Add an event to a game session.
   Future<void> addEventToSession(String sessionId, SoccerEvent event) async {
     try {
       final session = await getGameSession(sessionId);
       if (session != null) {
-        // Use withEvent to create a new session with updated scores
         final updatedSession = session.withEvent(event);
         await updateGameSession(updatedSession);
       }
@@ -190,7 +190,7 @@ class AppwriteService {
     }
   }
 
-  // Update persisted scores for a session (useful for existing sessions)
+  // Update persisted scores for a session.
   Future<void> updateSessionScores(String sessionId) async {
     try {
       final session = await getGameSession(sessionId);
@@ -206,27 +206,25 @@ class AppwriteService {
     }
   }
 
-  // Search game sessions by date range
+  // Search game sessions by date range.
   Future<List<GameSession>> searchSessionsByDate(
     DateTime startDate,
     DateTime endDate,
   ) async {
     try {
-      final response = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        queries: [
-          Query.greaterThanEqual('startTime', startDate.toIso8601String()),
-          Query.lessThanEqual('startTime', endDate.toIso8601String()),
-        ],
-      );
+      final response = await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .select()
+          .gte('startTime', startDate.toIso8601String())
+          .lte('startTime', endDate.toIso8601String());
 
-      return response.documents.map((doc) {
+      return response.map((doc) {
         try {
-          return GameSession.fromJson(doc.data);
+          return GameSession.fromJson(doc);
         } catch (e) {
-          print('Error parsing document ${doc.$id}: $e');
-          print('Document data: ${doc.data}');
+          final id = doc['id']?.toString() ?? '';
+          print('Error parsing document $id: $e');
+          print('Document data: $doc');
           rethrow;
         }
       }).toList();
@@ -235,21 +233,21 @@ class AppwriteService {
     }
   }
 
-  // Get active game sessions
+  // Get active game sessions.
   Future<List<GameSession>> getActiveSessions() async {
     try {
-      final response = await databases.listDocuments(
-        databaseId: databaseId,
-        collectionId: collectionId,
-        queries: [Query.equal('isActive', true)],
-      );
+      final response = await _client
+          .from(SupabaseConfig.gameSessionsTable)
+          .select()
+          .eq('isActive', true);
 
-      return response.documents.map((doc) {
+      return response.map((doc) {
         try {
-          return GameSession.fromJson(doc.data);
+          return GameSession.fromJson(doc);
         } catch (e) {
-          print('Error parsing document ${doc.$id}: $e');
-          print('Document data: ${doc.data}');
+          final id = doc['id']?.toString() ?? '';
+          print('Error parsing document $id: $e');
+          print('Document data: $doc');
           rethrow;
         }
       }).toList();

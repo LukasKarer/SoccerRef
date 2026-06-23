@@ -35,8 +35,8 @@ dependencies:
     sdk: flutter
   mobile_scanner: ^6.0.2
 
-  # Appwrite for backend
-  appwrite: 17.0.1
+  # Supabase for backend
+  supabase_flutter: ^2.8.0
 
   # QR Code generation
   qr_flutter: ^4.1.0

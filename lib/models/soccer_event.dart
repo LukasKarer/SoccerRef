@@ -61,7 +61,7 @@ class SoccerEvent {
     };
   }
 
-  // Serialize to a compact JSON string for storage in Appwrite as string array
+  // Serialize to a compact JSON string for backend string arrays.
   String toJsonString() => jsonEncode(toJson());
 
   factory SoccerEvent.fromJson(Map<String, dynamic> json) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import 'phone_roster_management_screen.dart';
 
 class PhoneEditSessionScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
   late TextEditingController _secondHalfExtraController;
 
   bool _saving = false;
-  final AppwriteService _appwrite = AppwriteService();
+  final SupabaseService _supabase = SupabaseService();
 
   @override
   void initState() {
@@ -145,7 +145,7 @@ class _PhoneEditSessionScreenState extends State<PhoneEditSessionScreen> {
         awayTeamColorRgb: awayRgb,
       );
 
-      await _appwrite.updateGameSession(updated);
+      await _supabase.updateGameSession(updated);
       if (!mounted) return;
       Navigator.of(context).pop<GameSession>(updated);
     } catch (e) {

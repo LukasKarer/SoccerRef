@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/game_session.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import '../services/local_storage_service.dart';
 import 'referee_screen.dart';
 import '../widgets/wear_back_button_handler.dart';
@@ -14,7 +14,7 @@ class GameSetupScreen extends StatefulWidget {
 }
 
 class _GameSetupScreenState extends State<GameSetupScreen> {
-  final _appwriteService = AppwriteService();
+  final _supabaseService = SupabaseService();
   final _localStorageService = LocalStorageService();
   bool _isLoading = false;
   GameSession? _gameSession;
@@ -46,8 +46,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
         deviceId: deviceId,
       );
 
-      // Save to Appwrite
-      final id = await _appwriteService.createGameSession(gameSession);
+      // Save to Supabase
+      final id = await _supabaseService.createGameSession(gameSession);
       print('Saved session id: $id');
       final savedSession = gameSession.copyWith(id: id);
       print('Saved session: ${savedSession.toJson()}');

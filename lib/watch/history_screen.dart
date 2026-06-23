@@ -3,7 +3,7 @@ import 'package:line_icons/line_icons.dart';
 import 'package:wear_os_plugin/wear_os_scroll_view.dart';
 import '../models/game_session.dart';
 import '../models/soccer_event.dart';
-import '../services/appwrite_service.dart';
+import '../services/supabase_service.dart';
 import 'dart:math' as math;
 import 'package:heroicons/heroicons.dart';
 import '../widgets/wear_back_button_handler.dart';
@@ -19,7 +19,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   late GameSession _session;
-  late AppwriteService _appwriteService;
+  late SupabaseService _supabaseService;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -27,7 +27,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _session = widget.session;
-    _appwriteService = AppwriteService();
+    _supabaseService = SupabaseService();
   }
 
   @override
@@ -257,7 +257,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _session.removeEvent(e);
     });
     try {
-      await _appwriteService.updateGameSession(_session);
+      await _supabaseService.updateGameSession(_session);
       if (mounted) {
         ScaffoldMessenger.of(
           context,

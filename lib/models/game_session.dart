@@ -82,9 +82,7 @@ class GameSession {
       'homeTeam': homeTeam,
       'awayTeam': awayTeam,
       'startTime': startTime.toIso8601String(),
-      // Appwrite collection expects events to be stored as strings
-      // to avoid nested object schema issues. We serialize each
-      // event map into a JSON string here.
+      // Store events as JSON strings to avoid nested object schema issues.
       'events': events.map((e) => e.toJsonString()).toList(),
       'firstHalfDuration': firstHalfDuration,
       'secondHalfDuration': secondHalfDuration,
@@ -101,7 +99,7 @@ class GameSession {
       'onPitchHomeLabels': onPitchHomeLabels,
       'onPitchAwayLabels': onPitchAwayLabels,
       // coach numbers removed
-      // Store as hex strings to satisfy Appwrite string schema
+      // Store as hex strings for backend compatibility.
       'homeTeamColorRgb': _rgbToHex(homeTeamColorRgb),
       'awayTeamColorRgb': _rgbToHex(awayTeamColorRgb),
       'sentOffHomeNumbers': sentOffHomeNumbers,
